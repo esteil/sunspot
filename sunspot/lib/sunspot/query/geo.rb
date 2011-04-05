@@ -1,19 +1,12 @@
-begin
-  require 'geohash'
-rescue LoadError => e
-  require 'pr_geohash'
-end
-
+# Works with Solr 3.1 or greater only
 module Sunspot
   module Query
     class Geo
-      MAX_PRECISION = 12
-      DEFAULT_PRECISION = 7
-      DEFAULT_PRECISION_FACTOR = 16.0
+      DEFAULT_DISTANCE = 1 #kilometers
+      DEFAULT_EXACT = false #exact is more processing intensive
 
       def initialize(field, lat, lng, options)
-        @field, @options = field, options
-        @geohash = GeoHash.encode(lat.to_f, lng.to_f, MAX_PRECISION)
+        @field, @lat, @lng, @options = field, lat.to_f, lng.to_f, options
       end
 
       def to_params
@@ -27,22 +20,16 @@ module Sunspot
       private
 
       def to_boolean_query
-        queries = []
-        MAX_PRECISION.downto(precision) do |i|
-          star = i == MAX_PRECISION ? '' : '*'
-          precision_boost = Util.format_float(
-            boost * precision_factor ** (i-MAX_PRECISION).to_f, 3)
-          queries << "#{@field.indexed_name}:#{@geohash[0, i]}#{star}^#{precision_boost}"
-        end
-        queries.join(' OR ')
+        function = exact ? 'geofilt' : 'bbox'
+        "{!#{function} sfield=#{@field.indexed_name} pt=#{@lat},#{@lng} d=#{distance}}"
       end
 
-      def precision
-        @options[:precision] || DEFAULT_PRECISION
+      def distance
+        @options[:distance] || DEFAULT_DISTANCE
       end
 
-      def precision_factor
-        @options[:precision_factor] || DEFAULT_PRECISION_FACTOR
+      def exact
+        @options[:exact] || DEFAULT_EXACT
       end
 
       def boost

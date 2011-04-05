@@ -1,9 +1,4 @@
 require 'singleton'
-begin
-  require 'geohash'
-rescue LoadError => e
-  require 'pr_geohash'
-end
 
 module Sunspot
   # 
@@ -344,13 +339,14 @@ module Sunspot
     #     end
     #   end
     #
+    # NOTE - This works with Solr 3.1 and non-mainline changes to schema.xml
     class LocationType < AbstractType
       def indexed_name(name)
-        "#{name}_s"
+        "#{name}_p"
       end
 
       def to_indexed(value)
-        GeoHash.encode(value.lat.to_f, value.lng.to_f, 12)
+        "#{value.lat.to_f},#{value.lng.to_f}"
       end
     end
 
